@@ -21,17 +21,50 @@ type Consumer struct {
 	exchange string
 }
 
-func (c *Consumer) Receive(key string) (<-chan amqp.Delivery, error) {
-	err := c.channel.ExchangeDeclare(c.exchange, "topic", true, false, false, false, nil)
+func (c *Consumer) Receive(queueName, key string) (<-chan amqp.Delivery, error) {
+	err := c.channel.ExchangeDeclare(
+		c.exchange, // name
+		"direct",   // kind
+		true,       // durable
+		false,      // auto delete
+		false,      // internal
+		false,      // no wait
+		nil,        // args
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to declare exchange")
 	}
 
-	queueName := "stuff"
-	q, err := c.channel.QueueDeclare(queueName, true, false, false, false, nil)
+	_, err = c.channel.QueueDeclare(
+		queueName, // queue name
+		true,      // durable
+		false,     // auto delete
+		false,     // exclusive
+		false,     // no wait
+		nil,       // args
+	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to declare queue")
 	}
 
-	return c.channel.Consume(q.Name, "", true, false, false, false, nil)
+	err = c.channel.QueueBind(
+		queueName,  // queue name
+		key,        // binding key
+		c.exchange, // source exchange
+		false,      // no wait
+		nil,        // args
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "faied to bind queue")
+	}
+
+	return c.channel.Consume(
+		queueName, // queue name
+		"",        // consumer tag
+		false,     // auto ack
+		false,     // exclusive
+		false,     // no local
+		false,     // no wait
+		nil,       // args
+	)
 }

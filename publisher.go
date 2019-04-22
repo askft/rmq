@@ -20,11 +20,19 @@ func NewPublisher(address, exchange string) (*Publisher, error) {
 
 type Publisher struct {
 	*Session
-	ex string
+	exchange string
 }
 
 func (p *Publisher) Send(key string, data []byte) error {
-	err := p.channel.ExchangeDeclare(p.ex, "topic", true, false, false, false, nil)
+	err := p.channel.ExchangeDeclare(
+		p.exchange, // name
+		"direct",   // kind
+		true,       // durable
+		false,      // auto delete
+		false,      // internal
+		false,      // no wait
+		nil,        // args
+	)
 	if err != nil {
 		return errors.Wrap(err, "failed to declare exchange")
 	}
@@ -37,6 +45,6 @@ func (p *Publisher) Send(key string, data []byte) error {
 		Body:         []byte(data),
 	}
 
-	err = p.channel.Publish(p.ex, key, false, false, msg)
+	err = p.channel.Publish(p.exchange, key, false, false, msg)
 	return errors.Wrap(err, "failed to publish")
 }
