@@ -1,0 +1,2 @@
+# food-rmq
+RabbitMQ helpers
