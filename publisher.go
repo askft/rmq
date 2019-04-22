@@ -8,21 +8,19 @@ import (
 )
 
 func NewPublisher(address, exchange string) (*Publisher, error) {
-	connection, channel, err := connect(address)
+	session, err := connect(address)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create publisher")
 	}
 	return &Publisher{
-		connection,
-		channel,
+		session,
 		exchange,
 	}, nil
 }
 
 type Publisher struct {
-	connection *amqp.Connection
-	channel    *amqp.Channel
-	ex         string
+	*Session
+	ex string
 }
 
 func (p *Publisher) Send(key string, data []byte) error {

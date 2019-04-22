@@ -6,24 +6,22 @@ import (
 )
 
 func NewConsumer(address, exchange string) (*Consumer, error) {
-	connection, channel, err := connect(address)
+	session, err := connect(address)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create consumer")
 	}
 	return &Consumer{
-		connection,
-		channel,
+		session,
 		exchange,
 	}, nil
 }
 
 type Consumer struct {
-	connection *amqp.Connection
-	channel    *amqp.Channel
-	exchange   string
+	*Session
+	exchange string
 }
 
-func (c *Consumer) Receive(key string, data []byte) (<-chan amqp.Delivery, error) {
+func (c *Consumer) Receive(key string) (<-chan amqp.Delivery, error) {
 	err := c.channel.ExchangeDeclare(c.exchange, "topic", true, false, false, false, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to declare exchange")
