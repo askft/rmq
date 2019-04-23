@@ -5,66 +5,64 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func NewConsumer(address, exchange string) (*Consumer, error) {
+func NewConsumer(address string) (*Consumer, error) {
 	session, err := connect(address)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create consumer")
 	}
 	return &Consumer{
 		session,
-		exchange,
 	}, nil
 }
 
 type Consumer struct {
 	*Session
-	exchange string
 }
 
-func (c *Consumer) Receive(queueName, key string) (<-chan amqp.Delivery, error) {
+func (c *Consumer) Receive(exchange, queue, key string) (<-chan amqp.Delivery, error) {
 	err := c.channel.ExchangeDeclare(
-		c.exchange, // name
-		"direct",   // kind
-		true,       // durable
-		false,      // auto delete
-		false,      // internal
-		false,      // no wait
-		nil,        // args
+		exchange, // name
+		"direct", // kind
+		true,     // durable
+		false,    // auto delete
+		false,    // internal
+		false,    // no wait
+		nil,      // args
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to declare exchange")
 	}
 
 	_, err = c.channel.QueueDeclare(
-		queueName, // queue name
-		true,      // durable
-		false,     // auto delete
-		false,     // exclusive
-		false,     // no wait
-		nil,       // args
+		queue, // queue name
+		true,  // durable
+		false, // auto delete
+		false, // exclusive
+		false, // no wait
+		nil,   // args
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to declare queue")
 	}
 
 	err = c.channel.QueueBind(
-		queueName,  // queue name
-		key,        // binding key
-		c.exchange, // source exchange
-		false,      // no wait
-		nil,        // args
+		queue,    // queue name
+		key,      // binding key
+		exchange, // source exchange
+		false,    // no wait
+		nil,      // args
 	)
 	if err != nil {
 		return nil, errors.Wrap(err, "faied to bind queue")
 	}
 
 	return c.channel.Consume(
-		queueName, // queue name
-		"",        // consumer tag
-		false,     // auto ack
-		false,     // exclusive
-		false,     // no local
-		false,     // no wait
-		nil,       // args
+		queue, // queue name
+		"",    // consumer tag
+		false, // auto ack
+		false, // exclusive
+		false, // no local
+		false, // no wait
+		nil,   // args
 	)
 }

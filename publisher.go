@@ -7,31 +7,29 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func NewPublisher(address, exchange string) (*Publisher, error) {
+func NewPublisher(address string) (*Publisher, error) {
 	session, err := connect(address)
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create publisher")
 	}
 	return &Publisher{
 		session,
-		exchange,
 	}, nil
 }
 
 type Publisher struct {
 	*Session
-	exchange string
 }
 
-func (p *Publisher) Send(key string, data []byte) error {
+func (p *Publisher) Send(exchange, key string, data []byte) error {
 	err := p.channel.ExchangeDeclare(
-		p.exchange, // name
-		"direct",   // kind
-		true,       // durable
-		false,      // auto delete
-		false,      // internal
-		false,      // no wait
-		nil,        // args
+		exchange, // name
+		"direct", // kind
+		true,     // durable
+		false,    // auto delete
+		false,    // internal
+		false,    // no wait
+		nil,      // args
 	)
 	if err != nil {
 		return errors.Wrap(err, "failed to declare exchange")
@@ -45,6 +43,12 @@ func (p *Publisher) Send(key string, data []byte) error {
 		Body:         []byte(data),
 	}
 
-	err = p.channel.Publish(p.exchange, key, false, false, msg)
+	err = p.channel.Publish(
+		exchange, // exchange
+		key,      // binding key
+		false,    // mandatory
+		false,    // immediate
+		msg,      // message
+	)
 	return errors.Wrap(err, "failed to publish")
 }
