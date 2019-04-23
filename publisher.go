@@ -7,6 +7,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// NewPublisher is DEPRECATED - do not use.
 func NewPublisher(address string) (*Publisher, error) {
 	session, err := connect(address)
 	if err != nil {
@@ -17,6 +18,7 @@ func NewPublisher(address string) (*Publisher, error) {
 	}, nil
 }
 
+// Publisher is DEPRECATED - do not use.
 type Publisher struct {
 	*Session
 }

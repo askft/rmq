@@ -5,6 +5,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// NewConsumer is DEPRECATED - do not use.
 func NewConsumer(address string) (*Consumer, error) {
 	session, err := connect(address)
 	if err != nil {
@@ -15,6 +16,7 @@ func NewConsumer(address string) (*Consumer, error) {
 	}, nil
 }
 
+// Consumer is DEPRECATED - do not use.
 type Consumer struct {
 	*Session
 }
