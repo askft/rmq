@@ -9,7 +9,7 @@ import (
 )
 
 type Router struct {
-	session     *Session
+	receiver    Receiver
 	middlewares []Middleware
 	handlers    map[string]MessageHandler
 	wg          sync.WaitGroup
@@ -17,9 +17,9 @@ type Router struct {
 
 type MessageHandler func(amqp.Delivery) error
 
-func NewRouter(session *Session) *Router {
+func NewRouter(receiver Receiver) *Router {
 	return &Router{
-		session,
+		receiver,
 		make([]Middleware, 0),
 		make(map[string]MessageHandler),
 		sync.WaitGroup{},
@@ -38,7 +38,7 @@ func (r *Router) Run() error {
 	for pattern, handler := range r.handlers {
 		s := strings.Split(pattern, ":")
 		exchange, queue, key := s[0], s[1], s[2]
-		ds, err := r.session.Receive(exchange, queue, key)
+		ds, err := r.receiver.Receive(exchange, queue, key)
 		if err != nil {
 			return err
 		}
