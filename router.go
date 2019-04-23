@@ -9,9 +9,10 @@ import (
 )
 
 type Router struct {
-	session  *Session
-	handlers map[string]MessageHandler
-	wg       sync.WaitGroup
+	session     *Session
+	middlewares []Middleware
+	handlers    map[string]MessageHandler
+	wg          sync.WaitGroup
 }
 
 type MessageHandler func(amqp.Delivery) error
@@ -19,9 +20,14 @@ type MessageHandler func(amqp.Delivery) error
 func NewRouter(session *Session) *Router {
 	return &Router{
 		session,
+		make([]Middleware, 0),
 		make(map[string]MessageHandler),
 		sync.WaitGroup{},
 	}
+}
+
+func (r *Router) Use(mw Middleware) {
+	r.middlewares = append(r.middlewares, mw)
 }
 
 func (r *Router) Bind(pattern string, h MessageHandler) {
@@ -37,10 +43,23 @@ func (r *Router) Run() error {
 			return err
 		}
 		r.wg.Add(1)
-		go r.handle(ds, handler)
+		wrappedHandler := chain(r.middlewares, handler)
+		go r.handle(ds, wrappedHandler)
 	}
 	r.wg.Wait()
 	return nil
+}
+
+func chain(middlewares []Middleware, handler MessageHandler) MessageHandler {
+	if len(middlewares) == 0 {
+		return handler
+	}
+
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		handler = middlewares[i](handler)
+	}
+
+	return handler
 }
 
 func (r *Router) handle(c <-chan amqp.Delivery, h MessageHandler) {
