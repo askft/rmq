@@ -30,8 +30,8 @@ func (r *Router) Use(mw Middleware) {
 	r.middlewares = append(r.middlewares, mw)
 }
 
-func (r *Router) Bind(pattern string, h MessageHandler) {
-	r.handlers[pattern] = h
+func (r *Router) Bind(exchange, queue, key string, h MessageHandler) {
+	r.handlers[exchange+":"+queue+":"+key] = h
 }
 
 func (r *Router) Run() error {
