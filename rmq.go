@@ -4,6 +4,13 @@ import (
 	"github.com/streadway/amqp"
 )
 
+const (
+	ExchangeDirect  = "direct"
+	ExchangeTopic   = "topic"
+	ExchangeFanout  = "fanout"
+	ExchangeHeaders = "headers"
+)
+
 type Mailbox interface {
 	Session
 	Sender
@@ -17,7 +24,7 @@ type Session interface {
 }
 
 type Sender interface {
-	Send(exchange, key string, data []byte) error
+	Send(exchange, key string, message amqp.Publishing) error
 }
 
 type Receiver interface {

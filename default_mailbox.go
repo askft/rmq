@@ -19,86 +19,90 @@ func NewDefaultMailbox(address string) (*DefaultMailbox, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "could not create session")
 	}
-	d := &DefaultMailbox{s}
-	return d, nil
+	return &DefaultMailbox{s}, nil
 }
 
-func (s *DefaultMailbox) Send(exchange, key string, data []byte) error {
-	err := s.Channel().ExchangeDeclare(
-		exchange, // name
-		"direct", // kind
-		true,     // durable
-		false,    // auto delete
-		false,    // internal
-		false,    // no wait
-		nil,      // args
+func (s *DefaultMailbox) SendJSON(exchange, key string, body []byte) error {
+	return s.Send(
+		exchange,
+		key,
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			Timestamp:    time.Now(),
+			ContentType:  "application/json",
+			Body:         body,
+		},
 	)
-	if err != nil {
+}
+
+func (s *DefaultMailbox) Send(exchange, key string, message amqp.Publishing) error {
+	if err := s.Channel().ExchangeDeclare(
+		exchange,       // name
+		ExchangeDirect, // kind
+		true,           // durable?
+		false,          // auto delete?
+		false,          // internal?
+		false,          // no wait?
+		nil,            // args
+	); err != nil {
 		return errors.Wrap(err, "failed to declare exchange")
 	}
 
-	// TODO - consider more options
-	msg := amqp.Publishing{
-		DeliveryMode: amqp.Persistent,
-		Timestamp:    time.Now(),
-		ContentType:  "text/plain",
-		Body:         []byte(data),
-	}
-
-	err = s.Channel().Publish(
+	err := s.Channel().Publish(
 		exchange, // exchange
 		key,      // binding key
-		false,    // mandatory
-		false,    // immediate
-		msg,      // message
+		false,    // mandatory?
+		false,    // immediate?
+		message,  // message
 	)
 	return errors.Wrap(err, "failed to publish")
 }
 
+// TODO also let user specify consumer tag?
 func (s *DefaultMailbox) Receive(exchange, queue, key string) (<-chan amqp.Delivery, error) {
-	err := s.Channel().ExchangeDeclare(
-		exchange, // name
-		"direct", // kind
-		true,     // durable
-		false,    // auto delete
-		false,    // internal
-		false,    // no wait
-		nil,      // args
-	)
-	if err != nil {
+
+	isDurable := true
+
+	if err := s.Channel().ExchangeDeclare(
+		exchange,       // name
+		ExchangeDirect, // kind
+		isDurable,      // durable?
+		false,          // auto delete?
+		false,          // internal?
+		false,          // no wait?
+		nil,            // args
+	); err != nil {
 		return nil, errors.Wrap(err, "failed to declare exchange")
 	}
 
-	_, err = s.Channel().QueueDeclare(
-		queue, // queue name
-		true,  // durable
-		false, // auto delete
-		false, // exclusive
-		false, // no wait
-		nil,   // args
-	)
-	if err != nil {
+	if _, err := s.Channel().QueueDeclare(
+		queue,     // queue name
+		isDurable, // durable
+		false,     // auto delete?
+		false,     // exclusive?
+		false,     // no wait?
+		nil,       // args
+	); err != nil {
 		return nil, errors.Wrap(err, "failed to declare queue")
 	}
 
-	err = s.Channel().QueueBind(
+	if err := s.Channel().QueueBind(
 		queue,    // queue name
 		key,      // binding key
 		exchange, // source exchange
-		false,    // no wait
+		false,    // no wait?
 		nil,      // args
-	)
-	if err != nil {
+	); err != nil {
 		return nil, errors.Wrap(err, "faied to bind queue")
 	}
 
 	return s.Channel().Consume(
 		queue, // queue name
 		"",    // consumer tag
-		false, // auto ack
-		false, // exclusive
-		false, // no local
-		false, // no wait
+		false, // auto ack?
+		false, // exclusive?
+		false, // no local?
+		false, // no wait?
 		nil,   // args
 	)
 }
