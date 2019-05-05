@@ -1,7 +1,9 @@
 package rmq
 
 import (
-	"log"
+	// "log"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/streadway/amqp"
 )
@@ -25,7 +27,11 @@ func Recovery(next MessageHandler) MessageHandler {
 
 func Logging(next MessageHandler) MessageHandler {
 	return func(d amqp.Delivery) {
-		log.Println("Received message with ID", d.MessageId)
+		log.WithFields(log.Fields{
+			"ReplyTo": d.ReplyTo,
+			"CorrID":  d.CorrelationId,
+			"Key":     d.RoutingKey,
+		}).Infof("Received message %s.", string(d.Body))
 		next(d)
 	}
 }

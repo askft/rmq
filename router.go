@@ -1,15 +1,16 @@
 package rmq
 
 import (
-	"log"
 	"strings"
 	"sync"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/streadway/amqp"
 )
 
 type Router struct {
-	mailbox     Mailbox
+	session     *DefaultSession
 	middlewares []Middleware
 	handlers    map[string]MessageHandler
 	wg          sync.WaitGroup
@@ -17,9 +18,9 @@ type Router struct {
 
 type MessageHandler func(amqp.Delivery)
 
-func NewRouter(mailbox Mailbox) *Router {
+func NewRouter(session *DefaultSession) *Router {
 	return &Router{
-		mailbox,
+		session,
 		make([]Middleware, 0),
 		make(map[string]MessageHandler),
 		sync.WaitGroup{},
@@ -38,13 +39,13 @@ func (r *Router) Run() error {
 	for pattern, handler := range r.handlers {
 		s := strings.Split(pattern, ":")
 		exchange, queue, key := s[0], s[1], s[2]
-		ds, err := r.mailbox.Receive(exchange, queue, key)
+		cs, err := r.session.CreateConsumerStream(ExchangeDirect, exchange, queue, key)
 		if err != nil {
 			return err
 		}
 		r.wg.Add(1)
 		handler = chain(r.middlewares, handler)
-		go r.handle(ds, handler)
+		go r.handle(cs.C, handler)
 	}
 	r.wg.Wait()
 	return nil

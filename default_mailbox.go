@@ -1,8 +1,6 @@
 package rmq
 
 import (
-	"time"
-
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 )
@@ -22,25 +20,12 @@ func NewDefaultMailbox(address string) (*DefaultMailbox, error) {
 	return &DefaultMailbox{s}, nil
 }
 
-func (s *DefaultMailbox) SendJSON(exchange, key string, body []byte) error {
-	return s.Send(
-		exchange,
-		key,
-		amqp.Publishing{
-			DeliveryMode: amqp.Persistent,
-			Timestamp:    time.Now(),
-			ContentType:  "application/json",
-			Body:         body,
-		},
-	)
-}
-
 func (s *DefaultMailbox) Send(exchange, key string, message amqp.Publishing) error {
 	if err := s.Channel().ExchangeDeclare(
 		exchange,       // name
 		ExchangeDirect, // kind
-		true,           // durable?
-		false,          // auto delete?
+		false,          // durable?
+		true,           // auto delete?
 		false,          // internal?
 		false,          // no wait?
 		nil,            // args
@@ -61,13 +46,11 @@ func (s *DefaultMailbox) Send(exchange, key string, message amqp.Publishing) err
 // TODO also let user specify consumer tag?
 func (s *DefaultMailbox) Receive(exchange, queue, key string) (<-chan amqp.Delivery, error) {
 
-	isDurable := true
-
 	if err := s.Channel().ExchangeDeclare(
 		exchange,       // name
 		ExchangeDirect, // kind
-		isDurable,      // durable?
-		false,          // auto delete?
+		false,          // durable?
+		true,           // auto delete?
 		false,          // internal?
 		false,          // no wait?
 		nil,            // args
@@ -76,12 +59,12 @@ func (s *DefaultMailbox) Receive(exchange, queue, key string) (<-chan amqp.Deliv
 	}
 
 	if _, err := s.Channel().QueueDeclare(
-		queue,     // queue name
-		isDurable, // durable
-		false,     // auto delete?
-		false,     // exclusive?
-		false,     // no wait?
-		nil,       // args
+		queue, // queue name
+		false, // durable
+		true,  // auto delete?
+		false, // exclusive?
+		false, // no wait?
+		nil,   // args
 	); err != nil {
 		return nil, errors.Wrap(err, "failed to declare queue")
 	}
