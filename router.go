@@ -31,15 +31,15 @@ func (r *Router) Use(mw Middleware) {
 	r.middlewares = append(r.middlewares, mw)
 }
 
-func (r *Router) Bind(exchange, queue, key string, h MessageHandler) {
-	r.handlers[exchange+":"+queue+":"+key] = h
+func (r *Router) Bind(kind, exchange, queue, key string, h MessageHandler) {
+	r.handlers[kind+":"+exchange+":"+queue+":"+key] = h
 }
 
 func (r *Router) Run() error {
 	for pattern, handler := range r.handlers {
 		s := strings.Split(pattern, ":")
-		exchange, queue, key := s[0], s[1], s[2]
-		cs, err := r.session.CreateConsumerStream(ExchangeDirect, exchange, queue, key)
+		kind, exchange, queue, key := s[0], s[1], s[2], s[3]
+		cs, err := r.session.CreateConsumerStream(kind, exchange, queue, key)
 		if err != nil {
 			return err
 		}
