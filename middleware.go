@@ -1,18 +1,9 @@
 package rmq
 
 import (
-	// "log"
-
 	log "github.com/sirupsen/logrus"
-
 	"github.com/streadway/amqp"
 )
-
-type Middleware func(MessageHandler) MessageHandler
-
-func (h MessageHandler) With(mw Middleware) MessageHandler {
-	return mw(h)
-}
 
 func Recovery(next MessageHandler) MessageHandler {
 	return func(d amqp.Delivery) {

@@ -5,23 +5,41 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type ConsumerStream struct {
-	C       <-chan amqp.Delivery
-	session Session
+func NewConsumerConnection(conn *amqp.Connection) *ConsumerConnection {
+	return &ConsumerConnection{conn}
 }
 
-// panics if error
-func (s *DefaultSession) MustCreateConsumerStream(exchangeKind, exchangeName, queue, key string) *ConsumerStream {
-	stream, err := s.CreateConsumerStream(exchangeKind, exchangeName, queue, key)
+type ConsumerConnection struct {
+	conn *amqp.Connection
+}
+
+type Consumer struct {
+	Channel *amqp.Channel
+	C       <-chan amqp.Delivery
+}
+
+// MustCreateConsumerStream panics if it fails
+func (cc *ConsumerConnection) MustCreateStream(
+	exchangeKind, exchangeName, queue, key string,
+) *Consumer {
+
+	stream, err := cc.CreateStream(exchangeKind, exchangeName, queue, key)
 	if err != nil {
 		panic(errors.Wrap(err, "failed to create stream"))
 	}
 	return stream
 }
 
-// TODO also let user specify consumer tag?
-func (s *DefaultSession) CreateConsumerStream(exchangeKind, exchangeName, queue, key string) (*ConsumerStream, error) {
-	if err := s.Channel().ExchangeDeclare(
+func (cc *ConsumerConnection) CreateStream(
+	exchangeKind, exchangeName, queue, key string,
+) (*Consumer, error) {
+
+	channel, err := cc.conn.Channel()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create channel")
+	}
+
+	if err := channel.ExchangeDeclare(
 		exchangeName, // name
 		exchangeKind, // kind
 		false,        // durable?
@@ -33,7 +51,7 @@ func (s *DefaultSession) CreateConsumerStream(exchangeKind, exchangeName, queue,
 		return nil, errors.Wrap(err, "failed to declare exchange")
 	}
 
-	if _, err := s.Channel().QueueDeclare(
+	if _, err := channel.QueueDeclare(
 		queue, // queue name
 		false, // durable
 		true,  // auto delete?
@@ -44,17 +62,17 @@ func (s *DefaultSession) CreateConsumerStream(exchangeKind, exchangeName, queue,
 		return nil, errors.Wrap(err, "failed to declare queue")
 	}
 
-	if err := s.Channel().QueueBind(
+	if err := channel.QueueBind(
 		queue,        // queue name
 		key,          // binding key
 		exchangeName, // source exchange
 		false,        // no wait?
 		nil,          // args
 	); err != nil {
-		return nil, errors.Wrap(err, "faied to bind queue")
+		return nil, errors.Wrap(err, "failed to bind queue")
 	}
 
-	c, err := s.Channel().Consume(
+	c, err := channel.Consume(
 		queue, // queue name
 		"",    // consumer tag
 		false, // auto ack?
@@ -66,5 +84,5 @@ func (s *DefaultSession) CreateConsumerStream(exchangeKind, exchangeName, queue,
 	if err != nil {
 		return nil, err
 	}
-	return &ConsumerStream{c, s}, nil
+	return &Consumer{channel, c}, nil
 }

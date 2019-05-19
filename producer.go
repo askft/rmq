@@ -5,15 +5,22 @@ import (
 	"github.com/streadway/amqp"
 )
 
+func NewProducerConnection(conn *amqp.Connection) *ProducerConnection {
+	return &ProducerConnection{conn}
+}
+
+type ProducerConnection struct {
+	conn *amqp.Connection
+}
+
 type Producer struct {
-	session      Session
-	exchangeKind string
+	Channel      *amqp.Channel
 	exchangeName string
 	key          string
 }
 
 func (p *Producer) Send(msg amqp.Publishing) error {
-	return p.session.Channel().Publish(
+	return p.Channel.Publish(
 		p.exchangeName, p.key, false, false, msg,
 	)
 }
@@ -28,16 +35,45 @@ func (p *Producer) SendJSON(msg MessageJSON) error {
 	})
 }
 
-func (s *DefaultSession) MustCreateProducer(exchangeKind, exchangeName, key string) *Producer {
-	producer, err := s.CreateProducer(exchangeKind, exchangeName, key)
+// Create a one-off producer and send a message through it
+func (pc *ProducerConnection) Send(
+	exchangeKind string,
+	exchangeName string,
+	key string,
+	msg amqp.Publishing,
+) error {
+	p, err := pc.CreateStream(exchangeKind, exchangeName, key)
+	if err != nil {
+		return err
+	}
+	return p.Send(msg)
+}
+
+func (pc *ProducerConnection) MustCreateStream(
+	exchangeKind string,
+	exchangeName string,
+	key string,
+) *Producer {
+
+	stream, err := pc.CreateStream(exchangeKind, exchangeName, key)
 	if err != nil {
 		panic(errors.Wrap(err, "failed to create producer"))
 	}
-	return producer
+	return stream
 }
 
-func (s *DefaultSession) CreateProducer(exchangeKind, exchangeName, key string) (*Producer, error) {
-	if err := s.Channel().ExchangeDeclare(
+func (pc *ProducerConnection) CreateStream(
+	exchangeKind string,
+	exchangeName string,
+	key string,
+) (*Producer, error) {
+
+	channel, err := pc.conn.Channel()
+	if err != nil {
+		return nil, errors.Wrap(err, "could not create channel")
+	}
+
+	if err := channel.ExchangeDeclare(
 		exchangeName, // name
 		exchangeKind, // kind
 		false,        // durable?
@@ -48,16 +84,8 @@ func (s *DefaultSession) CreateProducer(exchangeKind, exchangeName, key string) 
 	); err != nil {
 		return nil, errors.Wrap(err, "failed to declare exchange")
 	}
-	return &Producer{
-		s, exchangeKind, exchangeName, key,
-	}, nil
-}
 
-// Create a one-off producer and send a message through it
-func (s *DefaultSession) Send(exchangeKind, exchangeName, key string, msg amqp.Publishing) error {
-	p, err := s.CreateProducer(exchangeKind, exchangeName, key)
-	if err != nil {
-		return err
-	}
-	return p.Send(msg)
+	return &Producer{
+		channel, exchangeName, key,
+	}, nil
 }

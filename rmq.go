@@ -1,8 +1,6 @@
 package rmq
 
-import (
-	"github.com/streadway/amqp"
-)
+import "github.com/streadway/amqp"
 
 const (
 	ExchangeDirect  = "direct"
@@ -11,22 +9,17 @@ const (
 	ExchangeHeaders = "headers"
 )
 
-type Mailbox interface {
-	Session
-	Sender
-	Receiver
+type MessageHandler func(amqp.Delivery)
+
+type Middleware func(MessageHandler) MessageHandler
+
+func (h MessageHandler) With(mw Middleware) MessageHandler {
+	return mw(h)
 }
 
-type Session interface {
-	Connection() *amqp.Connection
-	Channel() *amqp.Channel
-	Close() error
-}
-
-type Sender interface {
-	Send(exchange, key string, message amqp.Publishing) error
-}
-
-type Receiver interface {
-	Receive(exchange, queue, key string) (<-chan amqp.Delivery, error)
+func Chain(middlewares []Middleware, handler MessageHandler) MessageHandler {
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		handler = middlewares[i](handler)
+	}
+	return handler
 }

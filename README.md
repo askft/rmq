@@ -1,2 +1,5 @@
-# food-rmq
+# rmq
+
 RabbitMQ helpers
+
+**TODO**: Add example usage.
