@@ -1,6 +1,10 @@
 package rmq
 
-import "github.com/streadway/amqp"
+import (
+	"log"
+
+	"github.com/streadway/amqp"
+)
 
 const (
 	ExchangeDirect  = "direct"
@@ -22,4 +26,23 @@ func Chain(middlewares []Middleware, handler MessageHandler) MessageHandler {
 		handler = middlewares[i](handler)
 	}
 	return handler
+}
+
+type Handler interface {
+	Handle(d amqp.Delivery)
+	DeliveryChan() <-chan amqp.Delivery
+}
+
+func RunAsync(handler Handler, mws ...Middleware) {
+	go RunSync(handler, mws...)
+}
+
+func RunSync(handler Handler, mws ...Middleware) {
+	handle := Chain(mws, handler.Handle)
+	for d := range handler.DeliveryChan() {
+		handle(d)
+		if err := d.Ack(false); err != nil {
+			log.Fatal(err)
+		}
+	}
 }
