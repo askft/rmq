@@ -2,4 +2,4 @@
 
 RabbitMQ helpers
 
-**TODO**: Add example usage.
+See examples folder.

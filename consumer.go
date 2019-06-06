@@ -25,6 +25,10 @@ type ConsumerConnection struct {
 	conn *amqp.Connection
 }
 
+func (cc *ConsumerConnection) Close() error {
+	return cc.conn.Close()
+}
+
 type Consumer struct {
 	Channel *amqp.Channel
 	C       <-chan amqp.Delivery

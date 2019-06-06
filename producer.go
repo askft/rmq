@@ -25,10 +25,20 @@ type ProducerConnection struct {
 	conn *amqp.Connection
 }
 
+func (pc *ProducerConnection) Close() error {
+	return pc.conn.Close()
+}
+
 type Producer struct {
 	Channel      *amqp.Channel
 	exchangeName string
 	key          string
+}
+
+func (p *Producer) SendWithKey(key string, msg amqp.Publishing) error {
+	return p.Channel.Publish(
+		p.exchangeName, key, false, false, msg,
+	)
 }
 
 func (p *Producer) Send(msg amqp.Publishing) error {
@@ -58,6 +68,7 @@ func (pc *ProducerConnection) Send(
 	if err != nil {
 		return err
 	}
+	defer p.Channel.Close()
 	return p.Send(msg)
 }
 
