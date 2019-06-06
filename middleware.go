@@ -5,7 +5,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func Recovery(next MessageHandler) MessageHandler {
+func Recoverer(next MessageHandler) MessageHandler {
 	return func(d amqp.Delivery) {
 		defer func() {
 			if rvr := recover(); rvr != nil {
@@ -16,7 +16,7 @@ func Recovery(next MessageHandler) MessageHandler {
 	}
 }
 
-func Logging(next MessageHandler) MessageHandler {
+func MessageLogger(next MessageHandler) MessageHandler {
 	return func(d amqp.Delivery) {
 		log.WithFields(log.Fields{
 			"ReplyTo": d.ReplyTo,
@@ -24,5 +24,14 @@ func Logging(next MessageHandler) MessageHandler {
 			"Key":     d.RoutingKey,
 		}).Infof("Received message %s.", string(d.Body))
 		next(d)
+	}
+}
+
+func Printer(s string) Middleware {
+	return func(next MessageHandler) MessageHandler {
+		return func(d amqp.Delivery) {
+			log.Println(s)
+			next(d)
+		}
 	}
 }

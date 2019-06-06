@@ -5,8 +5,20 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func NewConsumerConnection(conn *amqp.Connection) *ConsumerConnection {
-	return &ConsumerConnection{conn}
+func NewConsumerConnection(address string) (*ConsumerConnection, error) {
+	conn, err := amqp.Dial(address)
+	if err != nil {
+		return nil, err
+	}
+	return &ConsumerConnection{conn}, nil
+}
+
+func MustNewConsumerConnection(address string) *ConsumerConnection {
+	pc, err := NewConsumerConnection(address)
+	if err != nil {
+		panic(err)
+	}
+	return pc
 }
 
 type ConsumerConnection struct {

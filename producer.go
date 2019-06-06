@@ -5,8 +5,20 @@ import (
 	"github.com/streadway/amqp"
 )
 
-func NewProducerConnection(conn *amqp.Connection) *ProducerConnection {
-	return &ProducerConnection{conn}
+func NewProducerConnection(address string) (*ProducerConnection, error) {
+	conn, err := amqp.Dial(address)
+	if err != nil {
+		return nil, err
+	}
+	return &ProducerConnection{conn}, nil
+}
+
+func MustNewProducerConnection(address string) *ProducerConnection {
+	pc, err := NewProducerConnection(address)
+	if err != nil {
+		panic(err)
+	}
+	return pc
 }
 
 type ProducerConnection struct {
